@@ -1,0 +1,115 @@
+---
+title: "Lab 2 - Advanced Data Visualization"
+author: "Alisa Krasilnikov"
+format: html
+embed-resources: true
+editor: source
+execute: 
+  echo: true
+---
+
+## Part One: Identifying Bad Visualizations
+
+1. I believe that this graph is showing that different countries have different proportions of individuals who believe that vaccines are safe. While most of the region medians fall around 85, the median percentage is considerably lower for Europe and the Former Soviet Union. 
+
+2. We have region, country, and percentage of country that believes vaccines are safe. 
+
+3. x-axis: percentage of people who believe vaccines are safe, color: global region, "y-axis:" region (to produce the stacking).  
+
+4. Geom_point; a dotplot
+
+5. 
+
+* The points are trending upwards for seemingly no reason, which is misleading. I would do a boxplot or a density plot in order to better convey the message of the distributions within the nations. 
+
+* 
+
+
+6. 
+```{r}
+library(readxl)
+library(tidyverse)
+```
+
+
+```{r}
+#| label: read-datasets
+country_data <- read_excel(
+  here::here("wgm2018-dataset-crosstabs-all-countries.xlsx"), 
+                           sheet = "Full dataset")
+
+country_data_dictionary <- read_excel(
+  here::here("wgm2018-dataset-crosstabs-all-countries.xlsx"), 
+                           sheet = "Data dictionary")
+# Separate wider - take a single entry and separate into multiple columns
+```
+
+```{r}
+#| label: country-cleaning
+dictionary_firstrow <- head(country_data_dictionary, n = 1)
+
+variable_codes_list <- as.list(str_split(dictionary_firstrow$`Variable Type & Codes*`, pattern = ","))
+
+variable_codes_tibble <- tibble(Code = str_trim(variable_codes_list[[1]]))
+
+coding <- variable_codes_tibble |> 
+  filter(str_trim(Code) != "") |> 
+  separate_wider_delim(Code, delim = "=", names_sep = "Country") |> 
+  rename(WP5 = "CodeCountry1", Country = "CodeCountry2") |> 
+  mutate(WP5 = as.numeric(WP5))
+```
+
+```{r}
+#| label: region-cleaning
+# Did not end up using this, but still useful code so I'll save it
+dictionary_regrow <- slice(country_data_dictionary, 57)
+
+variable_codes_list <- as.list(str_split(dictionary_regrow$`Variable Type & Codes*`, pattern = ","))
+
+variable_codes_tibble <- tibble(Code = str_trim(variable_codes_list[[1]]))
+
+region_coding <- variable_codes_tibble |> 
+  filter(str_trim(Code) != "") |> 
+  separate_wider_delim(Code, delim = "=", names_sep = "Country") |> 
+  rename(Regions_Report = "CodeCountry1", Region = "CodeCountry2") |> 
+  mutate(Regions_Report = as.numeric(Regions_Report))
+```
+
+```{r}
+#| label: merging
+
+cleaned_dataset <- merge(country_data, coding, by = "WP5")
+cleaned_dataset <- merge(cleaned_dataset, region_coding, by = "Regions_Report") 
+
+```
+
+```{r}
+#| label: calculations
+
+final_dataset <- cleaned_dataset |> 
+  group_by(Country, Regions_Report) |> 
+  summarize(
+    prop_safe_belief = sum(Q25 %in% c(1, 2), na.rm = TRUE) / sum(!is.na(Q25)),
+    .groups = "drop"
+  ) |> 
+  mutate(true_region = case_when(
+    Regions_Report %in% c(3, 13) ~ "Middle East and North Africa",
+    Regions_Report %in% c(9, 10, 11, 12, 18) ~ "Asia",
+    Regions_Report %in% c(1, 2, 4, 5) ~ "Sub-Saharan Africa",
+    Regions_Report %in% c(6, 7, 8) ~ "Americas",
+    Regions_Report %in% c(15, 16, 17) ~ "Europe",
+    Regions_Report == 14 ~ "Former Soviet Union",
+    TRUE ~ "Not Assigned"
+  )) |> 
+  filter(true_region != "Not Assigned")
+```
+
+```{r}
+#| label: plotting
+
+ggplot(data = final_dataset,
+       mapping = aes(x = prop_safe_belief, color = true_region)) +
+  geom_boxplot()
+```
+
+
