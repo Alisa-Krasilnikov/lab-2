@@ -20,19 +20,22 @@ execute:
 
 5. 
 
-* The points are trending upwards for seemingly no reason, which is misleading. I would do a boxplot or a density plot in order to better convey the message of the distributions within the nations. 
+* The points are trending upwards for seemingly no reason, which is misleading. I would do a boxplot or a density plot in order to better convey the message of the distributions within the regions. 
 
-* 
+* If we're trying to look at general trends between regions, it doesn't make sense to label individual countries. I will remove these.
+
+* There is no reason to re-label the regions. I will remove the legend.
 
 
 6. 
-```{r}
+```{r, echo=FALSE, message = FALSE}
 library(readxl)
 library(tidyverse)
+library(ggrepel)
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 #| label: read-datasets
 country_data <- read_excel(
   here::here("wgm2018-dataset-crosstabs-all-countries.xlsx"), 
@@ -41,10 +44,9 @@ country_data <- read_excel(
 country_data_dictionary <- read_excel(
   here::here("wgm2018-dataset-crosstabs-all-countries.xlsx"), 
                            sheet = "Data dictionary")
-# Separate wider - take a single entry and separate into multiple columns
 ```
 
-```{r}
+```{r, echo=FALSE}
 #| label: country-cleaning
 dictionary_firstrow <- head(country_data_dictionary, n = 1)
 
@@ -59,7 +61,7 @@ coding <- variable_codes_tibble |>
   mutate(WP5 = as.numeric(WP5))
 ```
 
-```{r}
+```{r, echo=FALSE}
 #| label: region-cleaning
 # Did not end up using this, but still useful code so I'll save it
 dictionary_regrow <- slice(country_data_dictionary, 57)
@@ -75,15 +77,15 @@ region_coding <- variable_codes_tibble |>
   mutate(Regions_Report = as.numeric(Regions_Report))
 ```
 
-```{r}
+```{r, echo=FALSE}
 #| label: merging
 
 cleaned_dataset <- merge(country_data, coding, by = "WP5")
-cleaned_dataset <- merge(cleaned_dataset, region_coding, by = "Regions_Report") 
+# cleaned_dataset <- merge(cleaned_dataset, region_coding, by = "Regions_Report") 
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 #| label: calculations
 
 final_dataset <- cleaned_dataset |> 
@@ -101,15 +103,37 @@ final_dataset <- cleaned_dataset |>
     Regions_Report == 14 ~ "Former Soviet Union",
     TRUE ~ "Not Assigned"
   )) |> 
-  filter(true_region != "Not Assigned")
+  filter(true_region != "Not Assigned",
+         !is.na(prop_safe_belief)) |> 
+  mutate(prop_safe_belief_percent = prop_safe_belief * 100) 
+
 ```
 
-```{r}
+
+```{r, echo=FALSE}
 #| label: plotting
 
-ggplot(data = final_dataset,
-       mapping = aes(x = prop_safe_belief, color = true_region)) +
-  geom_boxplot()
+ggplot(data = final_dataset, 
+       mapping = aes(x = fct_reorder(true_region, prop_safe_belief_percent, .fun = median), 
+                     y = prop_safe_belief_percent, 
+                     color = true_region)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.3) +
+  geom_jitter(width = 0.05, alpha = 0.1, show.legend = FALSE) +
+  labs(
+    title = "Percent of People Who Believe Vaccines are Safe, \nby Country and Global Region",
+    subtitle = "Vertical Lines Represent Region Medians",
+    caption = "Source: Wellcome Global Monitor, part of the Gallup World Poll 2018") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(color = "lightgrey",
+                                  linewidth = 0.3),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "none",
+        plot.caption = element_text(size = 7, hjust = 1, face = "italic")) +
+  coord_flip(ylim = c(20, 100)) 
 ```
 
 
