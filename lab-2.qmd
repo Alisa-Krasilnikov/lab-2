@@ -32,6 +32,8 @@ execute:
 library(readxl)
 library(tidyverse)
 library(ggrepel)
+library(leaflet)
+library(rnaturalearth)
 ```
 
 
@@ -135,5 +137,94 @@ ggplot(data = final_dataset,
         plot.caption = element_text(size = 7, hjust = 1, face = "italic")) +
   coord_flip(ylim = c(20, 100)) 
 ```
+
+## Part Two: Broad Visualization Improvement
+
+5. Chart 3.3: Map of countries according to levels of Trust in Scientists (pg. 55). Each country is supposed to display the amount of trust that a country has for scientists. It's quite difficult to draw a lot of insights from this graph, but apparently we're supposed to be able to recognize that countries with a lot of diversity tend to have a lot more trust in scientists. 
+
+8. Country, percentage of people who answered ‘high trust,’ percentage of ‘medium trust,’ and percentage of ‘low trust.’ 
+
+9. Shape: country,  color: trust percentage
+
+10. This is a heatmap
+
+11.
+
+* Apparently, they displayed three different variables on the graph, the percentage of those that answered 'high trust,' 'medium trust,' and 'low trust.' However, I'm not quite sure how they managed to display this, as it's on a sliding scale from low to high, rather than percentage. Based on their analysis, I have a feeling that they either just used the "high," or just displayed the WGM_index. But, I will make this more clear. 
+
+* The country colors all look very similar to each other. I believe I should make the colors for "low trust" and "high trust" more distinct. 
+
+* I think I should have an option to hover over the country and have it display its trust level. It's difficult identifying which one has the largest trust. 
+
+
+12. 
+
+```{r, echo=FALSE}
+#| label: new-dataset-cleaning
+
+final_dataset_2 <- cleaned_dataset |> 
+  group_by(Country) |> 
+  summarize(
+    total = n(),
+    prop_low_trust = (sum(WGM_Indexr == 1, na.rm = TRUE) / total) * 100,
+    prop_med_trust = (sum(WGM_Indexr == 2, na.rm = TRUE) / total) * 100,
+    prop_high_trust = (sum(WGM_Indexr == 3, na.rm = TRUE) / total) * 100,
+    prop_no_opinion = (sum(WGM_Indexr == 99, na.rm = TRUE) / total) * 100,
+    avg_trust = mean(WGM_Index, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#Values off by a little bit, not sure why. Ask
+
+```
+
+```{r, echo=FALSE}
+#| label: new-dataset-adding-countries
+
+final_dataset_2 <- final_dataset_2 |> 
+  mutate(Country = case_when(
+    Country == "United States" ~ "United States of America",
+    Country == "Czech Republic" ~ "Czechia",
+    Country == "Ivory Coast" ~ "Côte d'Ivoire",
+    Country == "Republic of Congo" ~ "Dem. Rep. Congo",
+    TRUE ~ Country
+  ))
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+map_data <- world |>
+  left_join(final_dataset_2, by = c("name" = "Country")) |> 
+  filter(name != "Antarctica") 
+```
+
+```{r, echo=FALSE}
+#| label: 2nd-visual
+
+pal <- colorNumeric(
+  palette = "magma",
+  domain = c(1, 4),
+  reverse = TRUE,
+  na.color = "grey"
+)
+
+leaflet(data = map_data) |> 
+  addTiles() |> 
+  addPolygons(
+    fillColor = ~pal(avg_trust),
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.8,
+    popup = ~paste0(
+      "<b>", name, "</b><br>",
+      "High Trust: ", round(prop_high_trust, 2), "%<br>",
+      "Medium Trust: ", round(prop_med_trust, 2), "%<br>",
+      "Low Trust: ", round(prop_low_trust, 2), "%<br>",
+      "No Opinion: ", round(prop_no_opinion, 2), "%<br>",
+      "Avg Science Trust Index: ", round(avg_trust, 2)
+    ),
+    label = ~paste(name, "Average Trust in Science Index: ", round(avg_trust, 2))
+  ) |> 
+  addLegend(pal = pal, values = c(1, 4), title = "Average Trust in Science Index")
+```
+## Part Three: Third Data Visualization Improvement
 
 
