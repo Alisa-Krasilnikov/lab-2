@@ -175,8 +175,6 @@ final_dataset_2 <- cleaned_dataset |>
     .groups = "drop"
   )
 
-#Values off by a little bit, not sure why. Ask
-
 ```
 
 ```{r, echo=FALSE}
