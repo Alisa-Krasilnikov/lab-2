@@ -34,6 +34,7 @@ library(tidyverse)
 library(ggrepel)
 library(leaflet)
 library(rnaturalearth)
+library(plotly)
 ```
 
 
@@ -227,4 +228,90 @@ leaflet(data = map_data) |>
 ```
 ## Part Three: Third Data Visualization Improvement
 
+13. Chart 3.8: Scatterplot exploring the relationship between a country’s life expectancy at birth and people
+who trust doctors and nurses (pg. 101). This graph is trying to show that there is a positive relationship between the average life expectancy of a country, and how much they trust doctors and nurses. As one increases, the other does as well. 
 
+14. Country, average life expectancy, percentage of people who answered 'a lot' or 'some.' 
+
+15. y-axis: percentage of people who answered 'a lot' or 'some,' x-axis: average life expectancy, labels: country name
+
+16. 
+* The axes are quite hard to read and are not centered
+
+* While some countries are labeled for a reason, it appears as though most of the selected ones are arbitrary. I'll try to add in a hover feature (which displays the country name and values) instead
+
+
+17.
+
+```{r, echo=FALSE}
+#| label: third-dataset-cleaning
+
+final_dataset_3 <- cleaned_dataset |>
+  group_by(Country) |>
+  summarize(
+    n_trust_medic = sum(Q11E %in% c(1,2), na.rm = TRUE),
+    prop_trust_medic = sum(Q11E %in% c(1,2), na.rm = TRUE)/ sum(!is.na(Q11E))
+  )
+
+```
+
+```{r, echo=FALSE}
+#| label: life-expectancy
+
+life <- read_excel(
+  here::here("Life.xls"), 
+  skip = 3,
+  sheet = "Data")
+
+
+life <- life |> 
+  select(`Country Name`, `2018`)
+
+
+final_dataset_3 <- life |>
+  left_join(final_dataset_3, by = c("Country Name" = "Country"))
+```
+
+
+```{r, echo=FALSE}
+#| label: third-visual
+
+final_dataset_3 <- final_dataset_3 |>  
+  filter(!is.na(prop_trust_medic))
+
+fit <- lm(prop_trust_medic ~ `2018`, data = final_dataset_3) |> fitted.values()
+
+plot <- plot_ly(
+  data = final_dataset_3,
+  x = ~`2018`,
+  y = ~prop_trust_medic * 100,
+  type = 'scatter',
+  mode = 'markers',
+  text = ~paste(
+    "Country: ", `Country Name`, "<br>",
+    "Proportion of Trust in Doctors and Nurses: ", round(prop_trust_medic * 100, 1), "%<br>",
+    "Life Expectancy: ", `2018`
+  ),
+  hoverinfo = 'text',
+  marker = list(size = 10)
+)
+
+plot <- layout(
+  plot,
+  title = list(
+    text = "\nRelationship Between a Country’s Life Expectancy and its Trust in Medical Professionals\n ",
+    font = list(size = 15),
+    x = 0.07,
+    xanchor = "left"
+  ),
+  xaxis = list(
+    title = "Life Expectancy at Birth (2018)",
+    dtick = 10
+  ),
+  yaxis = list(
+    title = ""
+  )
+)
+
+plot
+```
