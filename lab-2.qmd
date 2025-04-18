@@ -28,7 +28,9 @@ execute:
 
 
 6. 
-```{r, echo=FALSE, message = FALSE}
+```{r, message = FALSE}
+#| label: load-data
+
 library(readxl)
 library(tidyverse)
 library(ggrepel)
@@ -38,7 +40,7 @@ library(plotly)
 ```
 
 
-```{r, echo=FALSE}
+```{r}
 #| label: read-datasets
 country_data <- read_excel(
   here::here("wgm2018-dataset-crosstabs-all-countries.xlsx"), 
@@ -49,7 +51,7 @@ country_data_dictionary <- read_excel(
                            sheet = "Data dictionary")
 ```
 
-```{r, echo=FALSE}
+```{r}
 #| label: country-cleaning
 dictionary_firstrow <- head(country_data_dictionary, n = 1)
 
@@ -64,7 +66,7 @@ coding <- variable_codes_tibble |>
   mutate(WP5 = as.numeric(WP5))
 ```
 
-```{r, echo=FALSE}
+```{r, echo = FALSE}
 #| label: region-cleaning
 # Did not end up using this, but still useful code so I'll save it
 dictionary_regrow <- slice(country_data_dictionary, 57)
@@ -84,11 +86,10 @@ region_coding <- variable_codes_tibble |>
 #| label: merging
 
 cleaned_dataset <- merge(country_data, coding, by = "WP5")
-# cleaned_dataset <- merge(cleaned_dataset, region_coding, by = "Regions_Report") 
 
 ```
 
-```{r, echo=FALSE}
+```{r}
 #| label: calculations
 
 final_dataset <- cleaned_dataset |> 
@@ -113,7 +114,7 @@ final_dataset <- cleaned_dataset |>
 ```
 
 
-```{r, echo=FALSE}
+```{r}
 #| label: plotting
 
 ggplot(data = final_dataset, 
@@ -160,7 +161,7 @@ ggplot(data = final_dataset,
 
 12. 
 
-```{r, echo=FALSE}
+```{r}
 #| label: new-dataset-cleaning
 
 final_dataset_2 <- cleaned_dataset |> 
@@ -177,7 +178,7 @@ final_dataset_2 <- cleaned_dataset |>
 
 ```
 
-```{r, echo=FALSE}
+```{r}
 #| label: new-dataset-adding-countries
 
 final_dataset_2 <- final_dataset_2 |> 
@@ -195,7 +196,7 @@ map_data <- world |>
   filter(name != "Antarctica") 
 ```
 
-```{r, echo=FALSE}
+```{r}
 #| label: 2nd-visual
 
 pal <- colorNumeric(
@@ -241,19 +242,19 @@ who trust doctors and nurses (pg. 101). This graph is trying to show that there 
 
 17.
 
-```{r, echo=FALSE}
+```{r}
 #| label: third-dataset-cleaning
 
 final_dataset_3 <- cleaned_dataset |>
   group_by(Country) |>
   summarize(
     n_trust_medic = sum(Q11E %in% c(1,2), na.rm = TRUE),
-    prop_trust_medic = sum(Q11E %in% c(1,2), na.rm = TRUE)/ sum(!is.na(Q11E))
+    prop_trust_medic = sum(Q11E %in% c(1,2), na.rm = TRUE)/sum(!is.na(Q11E))
   )
-
+  
 ```
 
-```{r, echo=FALSE}
+```{r}
 #| label: life-expectancy
 
 life <- read_excel(
@@ -271,7 +272,7 @@ final_dataset_3 <- life |>
 ```
 
 
-```{r, echo=FALSE}
+```{r}
 #| label: third-visual
 
 final_dataset_3 <- final_dataset_3 |>  
